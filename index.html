@@ -1,0 +1,843 @@
+::نظام حساب المسافات الفعلي عبر الطرق:index.html
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حساب مسافات الطرق | مديرية التربية والتعليم بطولكرم</title>
+    
+    <!-- Bootstrap 5 RTL CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Google Fonts (Tajawal) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .main-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        }
+        #map {
+            height: 520px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+            z-index: 1;
+        }
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .searchable-select-wrapper {
+            position: relative;
+        }
+        .dropdown-menu-custom {
+            max-height: 280px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 1050;
+        }
+        .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .pulse-loader {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            vertical-align: text-bottom;
+            background-color: currentColor;
+            border-radius: 50%;
+            opacity: 0;
+            animation: pulse-animation 0.6s infinite alternate;
+        }
+        @keyframes pulse-animation {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0.2; transform: scale(0.6); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- شريط التنقل العلوي المخصص لقسم التخطيط بطولكرم -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <i class="bi bi-map-fill text-warning fs-3"></i>
+                <div>
+                    <span class="fw-bold d-block">نظام حساب المسافات الفعلي عبر الطرق والشوارع</span>
+                    <small class="text-light-50 small fs-7" style="opacity: 0.85;">مديرية التربية والتعليم -طولكرم / قسم التخطيط</small>
+                </div>
+            </a>
+            <span class="navbar-text text-warning d-none d-md-inline small fw-bold">
+                <i class="bi bi-bezier2 me-1"></i> قياس المسارات اللوجستية والرحلات
+            </span>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        
+        <!-- حقل التنبيهات العام والذكي للنتائج الطارئة والنجاح -->
+        <div id="alertPlaceholder"></div>
+
+        <!-- بطاقات الإحصائيات والمعلومات السريعة -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card bg-white p-3 d-flex flex-row align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted mb-1 small fw-bold">مدارس طولكرم المتاحة</h6>
+                        <h3 class="fw-bold text-primary mb-0" id="totalSchoolsCount">0</h3>
+                    </div>
+                    <div class="bg-primary-subtle text-primary p-3 rounded-circle">
+                        <i class="bi bi-buildings-fill fs-3"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card bg-white p-3 d-flex flex-row align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted mb-1 small fw-bold">المسافة الحقيقية عبر الشوارع</h6>
+                        <h3 class="fw-bold text-success mb-0" id="currentDistanceStat">0 كم</h3>
+                    </div>
+                    <div class="bg-success-subtle text-success p-3 rounded-circle">
+                        <i class="bi bi-signpost-split-fill fs-3"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card bg-white p-3 d-flex flex-row align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted mb-1 small fw-bold">الزمن المتوقع لحركة المركبات</h6>
+                        <h3 class="fw-bold text-info mb-0" id="currentDurationStat">0 دقيقة</h3>
+                    </div>
+                    <div class="bg-info-subtle text-info p-3 rounded-circle">
+                        <i class="bi bi-clock-history fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            
+            <!-- العمود الأيمن: أدوات تحديد المدرستين وحساب المسافة الحقيقية -->
+            <div class="col-lg-5 col-12">
+                <div class="card main-card p-4 bg-white h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <h5 class="card-title fw-bold text-dark mb-4 d-flex align-items-center gap-2">
+                            <i class="bi bi-sliders2-vertical text-primary"></i>
+                            محرك التوجيه وحساب المسار
+                        </h5>
+                        
+                        <!-- اختيار مدرسة الانطلاق -->
+                        <div class="mb-3 searchable-select-wrapper">
+                            <label class="form-label fw-bold text-secondary small">المدرسة الأولى (نقطة الانطلاق):</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-primary"><i class="bi bi-geo-alt"></i></span>
+                                <input type="text" id="school1Search" class="form-control" placeholder="ابحث واختر المدرسة الأولى..." onclick="showDropdown('school1')" oninput="filterDropdown('school1')" autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearSelection('school1')"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            <div id="school1Dropdown" class="dropdown-menu dropdown-menu-custom w-100 shadow-sm p-0">
+                                <!-- يتم ملؤها ديناميكياً -->
+                            </div>
+                            <input type="hidden" id="school1Id">
+                        </div>
+
+                        <!-- زر التبادل السريع والاتجاهات -->
+                        <div class="text-center my-3">
+                            <button class="btn btn-sm btn-outline-secondary rounded-circle px-3 py-2 shadow-sm" onclick="swapSchools()" title="تبديل اتجاه المسار">
+                                <i class="bi bi-arrow-down-up me-1"></i> تبديل الاتجاه
+                            </button>
+                        </div>
+
+                        <!-- اختيار مدرسة الوصول -->
+                        <div class="mb-4 searchable-select-wrapper">
+                            <label class="form-label fw-bold text-secondary small">المدرسة الثانية (نقطة الوصول):</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-success"><i class="bi bi-geo-alt-fill"></i></span>
+                                <input type="text" id="school2Search" class="form-control" placeholder="ابحث واختر المدرسة الثانية..." onclick="showDropdown('school2')" oninput="filterDropdown('school2')" autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearSelection('school2')"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            <div id="school2Dropdown" class="dropdown-menu dropdown-menu-custom w-100 shadow-sm p-0">
+                                <!-- يتم ملؤها ديناميكياً -->
+                            </div>
+                            <input type="hidden" id="school2Id">
+                        </div>
+
+                        <!-- زر معالجة الحساب وحقن خرائط التوجيه -->
+                        <button id="calcBtn" onclick="processAndCalculate()" class="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            <i id="btnIcon" class="bi bi-bezier"></i>
+                            <span id="btnText">احسب مسافة الشوارع الفعلية</span>
+                        </button>
+                    </div>
+
+                    <!-- لوحة عرض النتائج التحليلية والمقارنة الجغرافية المتقدمة -->
+                    <div id="resultsPanel" class="mt-4 p-3 bg-light border border-light-subtle rounded-3 d-none">
+                        <h6 class="fw-bold text-dark mb-3 text-center border-bottom pb-2">نتائج القياس التحليلية</h6>
+                        <div class="row text-center g-2 mb-2">
+                            <div class="col-6">
+                                <div class="bg-white p-2 rounded border shadow-xs">
+                                    <span class="text-muted d-block small mb-1 fw-medium text-primary"><i class="bi bi-signpost-fill"></i> مسافة الطرق الفعلية</span>
+                                    <span id="resKm" class="fw-extrabold text-primary fs-5">0.00 كم</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-white p-2 rounded border shadow-xs">
+                                    <span class="text-muted d-block small mb-1 fw-medium text-success"><i class="bi bi-lightning-fill"></i> المسافة الهوائية المباشرة</span>
+                                    <span id="resAerial" class="fw-bold text-success fs-5">0.00 كم</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row text-center g-2">
+                            <div class="col-12">
+                                <div class="bg-white p-2 rounded border text-center shadow-xs">
+                                    <span class="text-muted d-block small mb-1">
+                                        <i class="bi bi-clock-fill me-1 text-info"></i> زمن القيادة الفعلي بالمركبة (متوسط السرعة الحقيقية)
+                                    </span>
+                                    <span id="resTime" class="fw-bold text-dark fs-5">0 دقيقة</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-2 w-100" id="routingEfficiencyMsg">
+                                مسار القيادة أطول بنسبة 0% من الخط المستقيم
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- العمود الأيسر: خريطة الشوارع التفاعلية والمسار الجغرافي النشط -->
+            <div class="col-lg-7 col-12">
+                <div class="card main-card p-2 bg-white h-100 d-flex flex-column">
+                    <div class="p-3 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-map-fill text-danger"></i>
+                            مستكشف المسار الحقيقي للشوارع والطرق
+                        </h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="resetMapView()" title="إعادة تركيز الخريطة">
+                            <i class="bi bi-crosshair"></i> إعادة تركيز
+                        </button>
+                    </div>
+                    <div class="flex-grow-1 position-relative">
+                        <div id="map"></div>
+                    </div>
+                    <div class="p-3 text-muted small d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill text-primary"></i>
+                        <span>يعتمد النظام على بيانات الطرق المحلية المحدثة من خوادم OSRM لتتبع مسارات السيارات والشوارع الرئيسية بمحافظة طولكرم.</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- دليل وجدول المدارس بالكامل من قائمة الملف الملحق -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card main-card p-4 bg-white">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+                        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <i class="bi bi-journal-bookmark-fill text-warning"></i>
+                            دليل المدارس المحملة بمحافظة طولكرم (الملف الأصلي)
+                        </h5>
+                        <div class="col-md-4 col-12">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" id="tableSearch" class="form-control" placeholder="بحث سريع في جدول المدارس..." oninput="filterTable()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle" id="schoolsTable">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th scope="col" style="width: 10%">الرقم الوطني</th>
+                                    <th scope="col" style="width: 35%">اسم المدرسة</th>
+                                    <th scope="col" style="width: 25%">المنطقة والتجمع السكاني</th>
+                                    <th scope="col" style="width: 12%">خط الطول (X)</th>
+                                    <th scope="col" style="width: 12%">خط العرض (Y)</th>
+                                    <th scope="col" style="width: 6%">استعراض</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schoolsTableBody">
+                                <!-- يتم تعبئتها بواسطة جافا سكربت -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- مكتبات الدعم والخرائط والـ Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // إعداد كامل قائمة بيانات المدارس المأخوذة مباشرة من الملف المرفق "الاحداثيات.csv" لمديرية طولكرم
+        const schools = [
+            { nationalId: "14111001", name: "بنات زهير محسن الاساسية", community: "طولكرم", lng: 35.0285325, lat: 32.31377809 },
+            { nationalId: "14111002", name: "بنات حليمة خريشة الثانوية", community: "طولكرم", lng: 35.027822, lat: 32.312903 },
+            { nationalId: "14111005", name: "بنات عنبتا الاساسية  العليا", community: "عنبتا", lng: 35.12102591, lat: 32.30584197 },
+            { nationalId: "14111010", name: "بنات إشبيلية الأساسية", community: "طولكرم", lng: 35.03112823, lat: 32.31324467 },
+            { nationalId: "14111019", name: "بنات ارتاح الثانوية", community: "طولكرم", lng: 35.01792769, lat: 32.29441905 },
+            { nationalId: "14111025", name: "بنات عمر بن عبد العزيز الثانوية", community: "طولكرم", lng: 35.02159356, lat: 32.3102218 },
+            { nationalId: "14111031", name: "ذكور الفاضلية الثانوية", community: "طولكرم", lng: 35.023629, lat: 32.313417 },
+            { nationalId: "14111043", name: "ذكور فايق كنعان  الأساسية", community: "عنبتا", lng: 35.11308254, lat: 32.30824757 },
+            { nationalId: "14111048", name: "ذكور عبد الرحيم الحاج محمد الثانوية", community: "طولكرم", lng: 35.040285, lat: 32.310351 },
+            { nationalId: "14111050", name: "ذكور  عبد المجيد تايه الاساسية", community: "طولكرم", lng: 35.02972242, lat: 32.30420418 },
+            { nationalId: "14111052", name: "ذكور اجنادين الاساسية", community: "طولكرم", lng: 35.02234837, lat: 32.3118418 },
+            { nationalId: "14111058", name: "بنات جمال عبدالناصر الثانوية", community: "طولكرم", lng: 35.024686, lat: 32.310205 },
+            { nationalId: "14111059", name: "بنات العدوية الثانوية", community: "طولكرم", lng: 35.030139, lat: 32.314777 },
+            { nationalId: "14111073", name: "ذكور خالد بن سعيد الاساسية", community: "طولكرم", lng: 35.02397264, lat: 32.31362353 },
+            { nationalId: "14111079", name: "بنات محمود الهمشري الاساسية", community: "طولكرم", lng: 35.02875664, lat: 32.31399976 },
+            { nationalId: "14111080", name: "بنات ابراهيم حسن الخواجا الثانوية", community: "طولكرم", lng: 35.03659753, lat: 32.30674527 },
+            { nationalId: "14111081", name: "ذكور احسان قاسم سماره الثانوية", community: "طولكرم", lng: 35.02119992, lat: 32.31138007 },
+            { nationalId: "14111082", name: " انشراح الددو الأساسية المختلطة", community: "طولكرم", lng: 35.0405234, lat: 32.29869326 },
+            { nationalId: "14111083", name: "ذكور مسقط الثانوية", community: "طولكرم", lng: 35.03436489, lat: 32.30468769 },
+            { nationalId: "14111084", name: "ذكور عدنان السفاريني الثانوية", community: "طولكرم", lng: 35.02609409, lat: 32.32277814 },
+            { nationalId: "14111093", name: "ذكور ارتاح الثانوية", community: "طولكرم", lng: 35.020963, lat: 32.300011 },
+            { nationalId: "14111095", name: "ذكور شويكه الاساسية", community: "طولكرم", lng: 35.035858, lat: 32.33301759 },
+            { nationalId: "14111096", name: "بنات شويكة الأساسية العليا", community: "طولكرم", lng: 35.03223354, lat: 32.33598547 },
+            { nationalId: "14111098", name: "بنات نور شمس الثانوية", community: "مخيم نور شمس", lng: 35.056108, lat: 32.32128 },
+            { nationalId: "14111104", name: "بنات زنوبيا الاساسية", community: "طولكرم", lng: 35.0334827, lat: 32.31703869 },
+            { nationalId: "14111111", name: "طولكرم الثانوية الصناعية", community: "طولكرم", lng: 35.0199254, lat: 32.3118571 },
+            { nationalId: "14111112", name: "ذكور علي نايفة الثانوية", community: "طولكرم", lng: 35.03277519, lat: 32.33443154 },
+            { nationalId: "14111118", name: "ذكور عبدالرحيم محمود الثانوية", community: "عنبتا", lng: 35.11443533, lat: 32.31143133 },
+            { nationalId: "14111125", name: "بنات شويكة الأساسية", community: "طولكرم", lng: 35.03251429, lat: 32.33511069 },
+            { nationalId: "14111131", name: "ذكور ذنابة الاساسية", community: "طولكرم", lng: 35.04089083, lat: 32.31072967 },
+            { nationalId: "14111133", name: "بنات القدس الاساسية", community: "طولكرم", lng: 35.03723617, lat: 32.3066292 },
+            { nationalId: "14111134", name: "ذكور ارتاح الاساسية", community: "طولكرم", lng: 35.02095007, lat: 32.30054693 },
+            { nationalId: "14111143", name: "ذكور حافظ الحمد الله الأساسية", community: "طولكرم", lng: 35.035228, lat: 32.321986 },
+            { nationalId: "14111144", name: "بنات فاطمة الزهراء الاساسية", community: "طولكرم", lng: 35.02085076, lat: 32.31009127 },
+            { nationalId: "14111145", name: "راسم كمال الاساسية المختلطة", community: "طولكرم", lng: 35.0319023, lat: 32.32069451 },
+            { nationalId: "14111146", name: "صلاح خلف الأساسية المختلطة", community: "طولكرم", lng: 35.02948357, lat: 32.30849224 },
+            { nationalId: "14112003", name: "الشهداء الاساسية المختلطة", community: "عنبتا", lng: 35.113458, lat: 32.310931 },
+            { nationalId: "14112004", name: "بنات باقة الشرقية الاساسية", community: "باقة الشرقية", lng: 35.07440065, lat: 32.40968727 },
+            { nationalId: "14112008", name: "بيت ليد الاساسية المختلطة", community: "بيت ليد", lng: 35.13150096, lat: 32.26563147 },
+            { nationalId: "14112009", name: "بنات صيدا الثانوية", community: "صيدا", lng: 35.11686242, lat: 32.38212873 },
+            { nationalId: "14112011", name: "بنات نزلة عيسى الثانوية", community: "نزلة عيسى", lng: 35.05767539, lat: 32.4171564 },
+            { nationalId: "14112012", name: "كفر رمان الأساسية المختلطة", community: "عنبتا", lng: 35.12923022, lat: 32.31607777 },
+            { nationalId: "14112013", name: "كفر صور الأساسية المختلطة", community: "كفر صور", lng: 35.06711906, lat: 32.24406796 },
+            { nationalId: "14112014", name: "بنات رامين الثانوية", community: "رامين", lng: 35.15109273, lat: 32.28589312 },
+            { nationalId: "14112015", name: "رامين الاساسية المختلطة", community: "رامين", lng: 35.14800089, lat: 32.28571006 },
+            { nationalId: "14112016", name: "الجاروشيه الاساسيه المختلطه", community: "الجاروشية", lng: 35.04721689, lat: 32.34636274 },
+            { nationalId: "14112022", name: "بنات بلعا الثانوية", community: "بلعا", lng: 35.10737466, lat: 32.32187948 },
+            { nationalId: "14112024", name: "بنات فرعون الثانوية", community: "فرعون", lng: 35.02368177, lat: 32.28544728 },
+            { nationalId: "14112026", name: "ذكور اكتابا الاساسية", community: "إكتابا", lng: 35.05228615, lat: 32.32416738 },
+            { nationalId: "14112027", name: "بنات اكتابا الثانوية", community: "إكتابا", lng: 35.055356, lat: 32.325464 },
+            { nationalId: "14112028", name: "ذكور شهداء زيتا الثانوية", community: "زيتا", lng: 35.04962482, lat: 32.38184914 },
+            { nationalId: "14112032", name: "ذكور قفين الثانويه", community: "قفين", lng: 35.0751077, lat: 32.43675652 },
+            { nationalId: "14112033", name: "بنات قفين الاساسية", community: "قفين", lng: 35.0859513, lat: 32.43087081 },
+            { nationalId: "14112035", name: "بنات قفين الثانوية", community: "قفين", lng: 35.08056863, lat: 32.43269499 },
+            { nationalId: "14112041", name: "ذكور سامي حجازي الثانوية", community: "كفر اللبد", lng: 35.110231, lat: 32.301711 },
+            { nationalId: "14112042", name: "ذكور كفر اللبد الاساسية", community: "كفر اللبد", lng: 35.10987623, lat: 32.30145502 },
+            { nationalId: "14112043", name: "ذكور صيدا الأساسية", community: "صيدا", lng: 35.117291, lat: 32.382876 },
+            { nationalId: "14112044", name: "ذكور صيدا الثانوية", community: "صيدا", lng: 35.117245, lat: 32.382661 },
+            { nationalId: "14112045", name: "ذكور دير الغصون الاساسية", community: "دير الغصون", lng: 35.08265444, lat: 32.35323388 },
+            { nationalId: "14112046", name: "ذكور دير الغصون الاساسيه العليا", community: "دير الغصون", lng: 35.06851473, lat: 32.36106793 },
+            { nationalId: "14112049", name: "ذكور شوفه الثانوية", community: "شوفة", lng: 35.08613332, lat: 32.27753696 },
+            { nationalId: "14112051", name: "كفر صور الثانوية المختلطه", community: "كفر صور", lng: 35.06119003, lat: 32.24494253 },
+            { nationalId: "14112055", name: "ذكور قفين الاساسية", community: "قفين", lng: 35.086197, lat: 32.430864 },
+            { nationalId: "14112057", name: "الراس الثانوية المختلطه", community: "الراس", lng: 35.0657353, lat: 32.25297633 },
+            { nationalId: "14112060", name: "بنات باقه الشرقيه الثانوية", community: "باقة الشرقية", lng: 35.0685711, lat: 32.41096546 },
+            { nationalId: "14112062", name: "ذكور فرعون الثانوية", community: "فرعون", lng: 35.01987005, lat: 32.2854963 },
+            { nationalId: "14112063", name: "ذكور شهداء بلعا الثانوية", community: "بلعا", lng: 35.11575642, lat: 32.33197452 },
+            { nationalId: "14112068", name: "ذكور رامين الثانوية", community: "رامين", lng: 35.15909653, lat: 32.29434122 },
+            { nationalId: "14112069", name: "النزلة الشرقية الثانوية المختلطة", community: "النزلة الشرقية", lng: 35.10603492, lat: 32.41017675 },
+            { nationalId: "14112072", name: "ذكور علار الاساسية", community: "علار", lng: 35.10666956, lat: 32.37327007 },
+            { nationalId: "14112076", name: "ذكور دير الغصون الثانوية", community: "دير الغصون", lng: 35.06897737, lat: 32.36027925 },
+            { nationalId: "14112077", name: "ذكور علار الثانوية", community: "علار", lng: 35.1192118, lat: 32.36950541 },
+            { nationalId: "14112083", name: "سفارين الثانوية المختلطة", community: "سفارين", lng: 35.108682, lat: 32.260675 },
+            { nationalId: "14112087", name: "المسقوفة الاساسية المختلطة", community: "المسقوفة", lng: 35.05462579, lat: 32.33689792 },
+            { nationalId: "14112089", name: "بنات عتيل الاساسية العليا", community: "عتيل", lng: 35.07453506, lat: 32.37010898 },
+            { nationalId: "14112090", name: "ذكور عتيل الاساسية", community: "عتيل", lng: 35.0701628, lat: 32.36911972 },
+            { nationalId: "14112099", name: "النزلة الغربية الثانوية المختلطة", community: "النزلة الغربية", lng: 35.08058312, lat: 32.40217268 },
+            { nationalId: "14112103", name: "بنات عتيل الثانوية", community: "عتيل", lng: 35.07047555, lat: 32.36801565 },
+            { nationalId: "14112105", name: "بنات دير الغصون الاساسية العليا", community: "دير الغصون", lng: 35.0732689, lat: 32.34645656 },
+            { nationalId: "14112106", name: "بنات زيتا الثانوية", community: "زيتا", lng: 35.04851677, lat: 32.38497298 },
+            { nationalId: "14112108", name: "بنات شويكة الثانوية", community: "طولكرم", lng: 35.050503, lat: 32.347755 },
+            { nationalId: "14112109", name: "بنات عنبتا الثانوية", community: "عنبتا", lng: 35.122127, lat: 32.305785 },
+            { nationalId: "14112110", name: "بنات كفر اللبد الثانوية", community: "كفر اللبد", lng: 35.10197, lat: 32.296732 },
+            { nationalId: "14112114", name: "الحاج سامي القبج الاساسية المختلطة", community: "عنبتا", lng: 35.116976, lat: 32.303847 },
+            { nationalId: "14112120", name: "عكابا الاساسية المختلطة", community: "عكابة", lng: 35.08626012, lat: 32.4479528 },
+            { nationalId: "14112123", name: "بنات بلعا الاساسية", community: "بلعا", lng: 35.11145834, lat: 32.33014229 },
+            { nationalId: "14112124", name: "ذكور علار الاساسية العليا", community: "علار", lng: 35.10618889, lat: 32.37311083 },
+            { nationalId: "14112126", name: "ذكور الحاجة نظمية داوود الاساسية العليا", community: "عتيل", lng: 35.07233616, lat: 32.36924731 },
+            { nationalId: "14112132", name: "ذكور بلعا الاساسية العليا", community: "بلعا", lng: 35.11690869, lat: 32.33675238 },
+            { nationalId: "14112133", name: "بنات الشهيد نشأت ابو جبارة الأساسية", community: "كفر اللبد", lng: 35.10475841, lat: 32.29716984 },
+            { nationalId: "14112134", name: "النزلة الوسطى الاساسية المختلطة", community: "النزلة الوسطى", lng: 35.09649112, lat: 32.40820687 },
+            { nationalId: "14112136", name: " بيت ليد الاساسية المختلطة", community: "بيت ليد", lng: 35.1263692, lat: 32.25960928 },
+            { nationalId: "14112140", name: "بنات دير الغصون الاساسية", community: "دير الغصون", lng: 35.079786, lat: 32.353303 },
+            { nationalId: "14112141", name: "بنات ارتاح الاساسية", community: "طولكرم", lng: 35.01763972, lat: 32.294288 },
+            { nationalId: "14112150", name: "اجبارة الاساسية المختلطة", community: "خربة جبارة", lng: 35.04469466, lat: 32.26961943 },
+            { nationalId: "14112170", name: "كفر زيباد الثانوية المختلطة", community: "كفر زيباد", lng: 35.0727084, lat: 32.22334119 },
+            { nationalId: "14112180", name: "كفر عبوش الثانوية المختلطة", community: "كفر عبوش", lng: 35.0887812, lat: 32.22504356 },
+            { nationalId: "14112185", name: "كفر عبوش الاساسية المختلطة", community: "كفر عبوش", lng: 35.08586586, lat: 32.22286076 },
+            { nationalId: "14121125", name: "ذكور الأوقاف الشرعية", community: "طولكرم", lng: 35.04513956, lat: 32.31266897 },
+            { nationalId: "14331707", name: "ذكور الاسراء النموذجية الأساسية", community: "طولكرم", lng: 35.02562879, lat: 32.30018582 },
+            { nationalId: "14331714", name: "بنات الاسراء النموذجية الثانوية", community: "طولكرم", lng: 35.02593037, lat: 32.30047942 },
+            { nationalId: "14332718", name: "اكاديمة الفرسان", community: "طولكرم", lng: 35.039774, lat: 32.324257 }
+        ];
+
+        let map;
+        let marker1 = null;
+        let marker2 = null;
+        let routePolyline = null;
+
+        // تهيئة النظام الأساسي
+        window.onload = function() {
+            initMap();
+            loadSchoolsData();
+        };
+
+        // تهيئة الخريطة على مركز محافظة طولكرم
+        function initMap() {
+            map = L.map('map').setView([32.313, 35.028], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap المساهمون'
+            }).addTo(map);
+        }
+
+        // تعبئة البيانات في الواجهة والجدول والقوائم المنسدلة
+        function loadSchoolsData() {
+            document.getElementById('totalSchoolsCount').innerText = schools.length;
+            buildDropdowns();
+            buildTable();
+            resetMapView();
+        }
+
+        // بناء القوائم المنسدلة للبحث الفوري والذكي
+        function buildDropdowns() {
+            const drop1 = document.getElementById('school1Dropdown');
+            const drop2 = document.getElementById('school2Dropdown');
+            
+            let htmlContent = '';
+            schools.forEach(school => {
+                htmlContent += `
+                    <button type="button" class="dropdown-item text-end py-2 border-bottom" onclick="selectSchool('${school.nationalId}', '${school.name.replace(/'/g, "\\'")}', ${school.lat}, ${school.lng}, '{type}')">
+                        <div class="fw-bold text-dark small">${school.name}</div>
+                        <div class="text-muted small d-flex justify-content-between">
+                            <span><i class="bi bi-tag-fill me-1"></i> ${school.nationalId}</span>
+                            <span><i class="bi bi-geo-alt me-1"></i> ${school.community}</span>
+                        </div>
+                    </button>
+                `;
+            });
+
+            drop1.innerHTML = htmlContent.replace(/{type}/g, 'school1');
+            drop2.innerHTML = htmlContent.replace(/{type}/g, 'school2');
+        }
+
+        function showDropdown(type) {
+            document.getElementById('school1Dropdown').classList.remove('show');
+            document.getElementById('school2Dropdown').classList.remove('show');
+            
+            const dropdown = document.getElementById(type + 'Dropdown');
+            dropdown.classList.add('show');
+        }
+
+        function filterDropdown(type) {
+            const input = document.getElementById(type + 'Search');
+            const filter = input.value.toLowerCase();
+            const dropdown = document.getElementById(type + 'Dropdown');
+            const buttons = dropdown.getElementsByTagName('button');
+
+            for (let i = 0; i < buttons.length; i++) {
+                const txtValue = buttons[i].textContent || buttons[i].innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    buttons[i].style.display = "";
+                } else {
+                    buttons[i].style.display = "none";
+                }
+            }
+        }
+
+        // تحديد اختيار المدرسة وتحريك الكاميرا الأولية للخريطة
+        function selectSchool(id, name, lat, lng, type) {
+            document.getElementById(type + 'Search').value = name;
+            document.getElementById(type + 'Id').value = id;
+            document.getElementById(type + 'Dropdown').classList.remove('show');
+            
+            focusSingleSchool(lat, lng, name, type);
+        }
+
+        function clearSelection(type) {
+            document.getElementById(type + 'Search').value = '';
+            document.getElementById(type + 'Id').value = '';
+            document.getElementById(type + 'Dropdown').classList.remove('show');
+            
+            if (type === 'school1' && marker1) {
+                map.removeLayer(marker1);
+                marker1 = null;
+            }
+            if (type === 'school2' && marker2) {
+                map.removeLayer(marker2);
+                marker2 = null;
+            }
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+                routePolyline = null;
+            }
+            
+            document.getElementById('resultsPanel').classList.add('d-none');
+            document.getElementById('currentDistanceStat').innerText = '0 كم';
+            document.getElementById('currentDurationStat').innerText = '0 دقيقة';
+        }
+
+        function swapSchools() {
+            const s1Name = document.getElementById('school1Search').value;
+            const s1Id = document.getElementById('school1Id').value;
+            const s2Name = document.getElementById('school2Search').value;
+            const s2Id = document.getElementById('school2Id').value;
+
+            document.getElementById('school1Search').value = s2Name;
+            document.getElementById('school1Id').value = s2Id;
+            document.getElementById('school2Search').value = s1Name;
+            document.getElementById('school2Id').value = s1Id;
+
+            processAndCalculate();
+        }
+
+        // تركيز الخريطة على مدرسة واحدة بوضع علامة مخصصة
+        function focusSingleSchool(lat, lng, name, type) {
+            if (type === 'school1') {
+                if (marker1) map.removeLayer(marker1);
+                marker1 = L.marker([lat, lng], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(map).bindPopup(`<b>نقطة الانطلاق (1):</b><br>${name}`).openPopup();
+            } else {
+                if (marker2) map.removeLayer(marker2);
+                marker2 = L.marker([lat, lng], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(map).bindPopup(`<b>نقطة الوصول (2):</b><br>${name}`).openPopup();
+            }
+
+            if (marker1 && marker2) {
+                const group = new L.featureGroup([marker1, marker2]);
+                map.fitBounds(group.getBounds().pad(0.15));
+            } else {
+                map.setView([lat, lng], 14);
+            }
+        }
+
+        // إغلاق قوائم البحث عند النقر خارجها
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.searchable-select-wrapper')) {
+                document.getElementById('school1Dropdown').classList.remove('show');
+                document.getElementById('school2Dropdown').classList.remove('show');
+            }
+        });
+
+        // دالة تحويل الدرجات لراديان
+        function toRad(Value) {
+            return Value * Math.PI / 180;
+        }
+
+        // معادلة هافرسين لحساب أقصر مسافة هوائية مباشرة (الخط المستقيم) بالكم
+        function calculateHaversine(lat1, lon1, lat2, lon2) {
+            const R = 6371; // نصف قطر الأرض
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // دالة التحكم في تحميل زر الحساب
+        function setButtonLoading(loading) {
+            const btn = document.getElementById('calcBtn');
+            const text = document.getElementById('btnText');
+            const spinner = document.getElementById('btnSpinner');
+            const icon = document.getElementById('btnIcon');
+
+            if (loading) {
+                btn.classList.add('disabled');
+                spinner.classList.remove('d-none');
+                icon.classList.add('d-none');
+                text.innerText = "جاري تتبع وحساب الطرق...";
+            } else {
+                btn.classList.remove('disabled');
+                spinner.classList.add('d-none');
+                icon.classList.remove('d-none');
+                text.innerText = "احسب مسافة الشوارع الفعلية";
+            }
+        }
+
+        // معالجة الحساب الرئيسي ورسم المسار الفعلي باستخدام OSRM API
+        async function processAndCalculate() {
+            const id1 = document.getElementById('school1Id').value;
+            const id2 = document.getElementById('school2Id').value;
+
+            if (!id1 || !id2) {
+                showAlert("يرجى تحديد المدرسة الأولى والثانية أولاً للقيام بعملية القياس.", "warning");
+                return;
+            }
+
+            if (id1 === id2) {
+                showAlert("لقد اخترتِ نفس المدرسة للبداية والنهاية! يرجى اختيار مدرستين مختلفتين للقياس.", "warning");
+                return;
+            }
+
+            const school1 = schools.find(s => s.nationalId === id1);
+            const school2 = schools.find(s => s.nationalId === id2);
+
+            if (!school1 || !school2) {
+                showAlert("حدث عطل غير متوقع أثناء استرجاع إحداثيات المدارس.", "danger");
+                return;
+            }
+
+            // 1. حساب المسافة الهوائية المباشرة (الخط المستقيم) كمرجع للمقارنة
+            const aerialDistance = calculateHaversine(school1.lat, school1.lng, school2.lat, school2.lng);
+
+            setButtonLoading(true);
+
+            // 2. محاولة الاتصال بخادم التوجيه العالمي المفتوح OSRM لجلب مسافة القيادة الفعلية والشوارع
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${school1.lng},${school1.lat};${school2.lng},${school2.lat}?overview=full&geometries=geojson`;
+
+            try {
+                // تفعيل استدعاء الشبكة مع مؤقت زمني لعدم تعليق التطبيق
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 ثوانٍ حد أقصى للرد
+
+                const response = await fetch(osrmUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error("تعذر الرد من خادم الطرق الرئيسي.");
+
+                const data = await response.json();
+
+                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                    throw new Error("لا توجد مسارات قيادة متوفرة بين هاتين النقطتين.");
+                }
+
+                const route = data.routes[0];
+                const drivingDistanceKm = route.distance / 1000; // تحويل من متر لكيلومتر
+                const durationMinutes = Math.round(route.duration / 60); // تحويل من ثوانٍ لدقائق
+                const coordinates = route.geometry.coordinates; // مصفوفة الإحداثيات [lng, lat]
+
+                // عرض وتحديث البيانات المقاسة في الواجهة
+                displayResults(drivingDistanceKm, aerialDistance, durationMinutes);
+
+                // رسم خط المسار الفعلي المتطابق مع الشوارع والمنعطفات
+                drawActualRoute(coordinates, school1, school2);
+                showAlert(`تم حساب مسار الشوارع الفعلي بنجاح!`, "success");
+
+            } catch (error) {
+                console.warn("عطل في جلب مسار الشوارع، الانتقال للوضع الاحتياطي الفوري (المسافة الهوائية):", error);
+                
+                // في حال انقطاع الشبكة أو تعطل الخادم يتم تشغيل محاكي المسافة الهوائية تلقائياً كإنقاذ للموقف
+                const simulatedDrivingDistance = aerialDistance * 1.25; // بافتراض أن المسار بالطرق أطول بـ 25% من الخط المستقيم
+                const estimatedMinutes = Math.round((simulatedDrivingDistance / 50) * 60); // بافتراض سرعة سيارة 50 كم/ساعة
+
+                displayResults(simulatedDrivingDistance, aerialDistance, estimatedMinutes, true);
+                
+                // رسم مسار مستقيم كخيار احتياطي
+                drawBackupStraightRoute(school1, school2);
+                showAlert(`تم حساب مسافة افتراضية بناءً على الإسقاط الهوائي بسبب عدم استجابة خادم الطرق حالياً.`, "warning");
+            } finally {
+                setButtonLoading(false);
+            }
+        }
+
+        // عرض نتائج الحساب والمقارنة بنسب فروقات الطرق الهوائية والفعلية
+        function displayResults(roadDistance, aerialDistance, duration, isSimulated = false) {
+            document.getElementById('resKm').innerText = roadDistance.toFixed(3) + " كم";
+            document.getElementById('resAerial').innerText = aerialDistance.toFixed(3) + " كم";
+            
+            let durationText = "";
+            if (duration < 1) durationText = "أقل من دقيقة واحدة بالسيارة";
+            else if (duration === 1) durationText = "دقيقة واحدة تقريباً";
+            else if (duration === 2) durationText = "دقيقتين تقريباً";
+            else durationText = `${duration} دقيقة تقريباً بالسيارة`;
+
+            document.getElementById('resTime').innerHTML = `<i class="bi bi-car-front-fill me-1 text-info"></i> ${durationText}`;
+
+            // تحديث البطاقات العلوية الرئيسية
+            document.getElementById('currentDistanceStat').innerText = roadDistance.toFixed(2) + " كم";
+            document.getElementById('currentDurationStat').innerText = duration + " دقيقة";
+
+            // حساب كفاءة المسار والالتواء الجغرافي للشوارع
+            const increasePercent = Math.round(((roadDistance - aerialDistance) / aerialDistance) * 100);
+            const efficiencyMsg = document.getElementById('routingEfficiencyMsg');
+            
+            if (isSimulated) {
+                efficiencyMsg.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> قياس تقريبي: مسار الشوارع المقدر أطول بحوالي <b>25%</b> من الإسقاط المباشر.`;
+                efficiencyMsg.className = "badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle py-2 w-100 text-center";
+            } else {
+                efficiencyMsg.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> مسار القيادة الفعلي عبر الطرق أطول بنسبة <b>${increasePercent}%</b> من الخط الهوائي المستقيم.`;
+                efficiencyMsg.className = "badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-2 w-100 text-center";
+            }
+
+            document.getElementById('resultsPanel').classList.remove('d-none');
+        }
+
+        // رسم الخط المتعرج الفعلي على الخريطة والمتطابق تماماً مع الشوارع والمنعطفات
+        function drawActualRoute(coordinates, s1, s2) {
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+            }
+
+            // تحويل مصفوفة OSRM [lng, lat] إلى تنسيق Leaflet [lat, lng]
+            const latlngs = coordinates.map(coord => [coord[1], coord[0]]);
+
+            routePolyline = L.polyline(latlngs, {
+                color: '#2563eb', // لون أزرق ملكي جذاب
+                weight: 6,
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // تعديل مجال الخريطة تلقائياً ليغطي كامل المسار بشكل كامل ومنسق
+            const bounds = L.latLngBounds(latlngs);
+            map.fitBounds(bounds.pad(0.15));
+        }
+
+        // رسم خط مستقيم احتياطي في حال انقطاع خدمة الـ API
+        function drawBackupStraightRoute(s1, s2) {
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+            }
+
+            const latlngs = [
+                [s1.lat, s1.lng],
+                [s2.lat, s2.lng]
+            ];
+
+            routePolyline = L.polyline(latlngs, {
+                color: '#dc2626', // أحمر تنبيهي كبديل احتياطي
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                lineCap: 'round'
+            }).addTo(map);
+
+            const group = new L.featureGroup([marker1, marker2]);
+            map.fitBounds(group.getBounds().pad(0.15));
+        }
+
+        // تصفير وتركيز الكاميرا الجغرافية
+        function resetMapView() {
+            if (schools.length > 0) {
+                const bounds = schools.map(s => [s.lat, s.lng]);
+                map.fitBounds(bounds);
+            } else {
+                map.setView([32.313, 35.028], 12);
+            }
+        }
+
+        // بناء وتعبئة جدول المدارس بالكامل بالأسفل لتسهيل المعاينة والبحث والفرز الفوري
+        function buildTable() {
+            const body = document.getElementById('schoolsTableBody');
+            let html = '';
+            
+            schools.forEach(school => {
+                html += `
+                    <tr>
+                        <td><span class="badge bg-light text-dark border font-monospace">${school.nationalId}</span></td>
+                        <td class="fw-bold text-primary">${school.name}</td>
+                        <td>${school.community}</td>
+                        <td><code class="text-secondary">${school.lng.toFixed(6)}</code></td>
+                        <td><code class="text-secondary">${school.lat.toFixed(6)}</code></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" onclick="showOnMap(${school.lat}, ${school.lng}, '${school.name.replace(/'/g, "\\'")}')" title="تحديد على الخريطة">
+                                <i class="bi bi-geo-alt"></i> استعراض
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            body.innerHTML = html;
+        }
+
+        // فلترة دليل المدارس بالجدول فورياً عند الكتابة في خانة البحث
+        function filterTable() {
+            const filter = document.getElementById('tableSearch').value.toLowerCase();
+            const rows = document.getElementById('schoolsTableBody').getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const text = rows[i].textContent || rows[i].innerText;
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        }
+
+        // استعراض موقع مدرسة معينة مباشرة من الجدول على الخريطة
+        function showOnMap(lat, lng, name) {
+            if (marker2) map.removeLayer(marker2);
+            if (routePolyline) map.removeLayer(routePolyline);
+            
+            if (marker1) map.removeLayer(marker1);
+            marker1 = L.marker([lat, lng]).addTo(map).bindPopup(`<b>المدرسة المحددة:</b><br>${name}`).openPopup();
+            map.setView([lat, lng], 15);
+            
+            window.scrollTo({ top: 220, behavior: 'smooth' });
+        }
+
+        // دالة لعرض الإشعارات المرنة المتجاوبة بدلاً من التنبيهات المزعجة
+        function showAlert(message, type) {
+            const placeholder = document.getElementById('alertPlaceholder');
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center gap-2" role="alert">
+                    <i class="bi ${type === 'success' ? 'bi-check-circle-fill' : type === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-exclamation-circle-fill'}"></i>
+                    <div>${message}</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            placeholder.appendChild(wrapper);
+
+            // تدمير التنبيه تلقائياً بعد 6 ثوانٍ
+            setTimeout(() => {
+                const alert = bootstrap.Alert.getOrCreateInstance(wrapper.firstElementChild);
+                if (alert) alert.close();
+            }, 6000);
+        }
+    </script>
+</body>
+</html>
+
+
+### مميزات التحديث الجديد الخاص بمسارات الطرق:
+1. **جلب شبكة الشوارع الفعلية:** يقوم النظام حالياً برسم خط المسار الفعلي متطابقاً مع شبكة الطرق الرئيسية المعبدة بمحافظة طولكرم عبر خادم **OSRM**.
+2. **رسم متعرج ذكي:** يمر المسار بالمنعطفات والتقاطعات بدلاً من كونه خطاً مستقيماً، مما يجعل تتبع المسار دقيقاً ومطابقاً للواقع.
+3. **أداة المقارنة:** يمكنكِ الآن مقارنة الفارق بين "المسافة الهوائية المباشرة" وبين "المسافة الفعلية عبر الشوارع"، مع توفير نسبة مئوية دقيقة لتوضيح مدى طول مسار القيادة مقارنة بالخط المستقيم.
+4. **تقدير زمن الرحلة:** يعطي زمناً حقيقياً مستخرجاً ومحدثاً من حسابات الطرق الفعلية.
