@@ -1,19 +1,16 @@
-::نظام حساب المسافات الفعلي عبر الطرق:index.html
+::نظام تحديد مواقع المدارس:index.html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حساب مسافات الطرق | مديرية التربية والتعليم بطولكرم</title>
+    <title>نظام تحديد مواقع المدارس والمسافة بينها | مديرية طولكرم</title>
     
-    <!-- Bootstrap 5 RTL CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     
-    <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- Google Fonts (Tajawal) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
@@ -56,46 +53,29 @@
             max-height: 400px;
             overflow-y: auto;
         }
-        .pulse-loader {
-            display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            vertical-align: text-bottom;
-            background-color: currentColor;
-            border-radius: 50%;
-            opacity: 0;
-            animation: pulse-animation 0.6s infinite alternate;
-        }
-        @keyframes pulse-animation {
-            from { opacity: 1; transform: scale(1); }
-            to { opacity: 0.2; transform: scale(0.6); }
-        }
     </style>
 </head>
 <body>
 
-    <!-- شريط التنقل العلوي المخصص لقسم التخطيط بطولكرم -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3 shadow-sm">
-        <div class="container">
+        <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand d-flex align-items-center gap-2" href="#">
                 <i class="bi bi-map-fill text-warning fs-3"></i>
                 <div>
-                    <span class="fw-bold d-block">نظام حساب المسافات الفعلي عبر الطرق والشوارع</span>
-                    <small class="text-light-50 small fs-7" style="opacity: 0.85;">مديرية التربية والتعليم -طولكرم / قسم التخطيط</small>
+                    <span class="fw-bold d-block">نظام تحديد مواقع المدارس والمسافة بينها</span>
+                    <small class="text-light-50 small fs-7" style="opacity: 0.85;">مديرية التربية والتعليم - طولكرم / قسم التخطيط</small>
                 </div>
             </a>
-            <span class="navbar-text text-warning d-none d-md-inline small fw-bold">
-                <i class="bi bi-bezier2 me-1"></i> قياس المسارات اللوجستية والرحلات
-            </span>
+            <button class="btn btn-warning fw-bold px-3 d-flex align-items-center gap-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#noteModal">
+                <i class="bi bi-info-circle-fill"></i> ملاحظة
+            </button>
         </div>
     </nav>
 
     <div class="container my-4">
         
-        <!-- حقل التنبيهات العام والذكي للنتائج الطارئة والنجاح -->
         <div id="alertPlaceholder"></div>
 
-        <!-- بطاقات الإحصائيات والمعلومات السريعة -->
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="card stat-card bg-white p-3 d-flex flex-row align-items-center justify-content-between">
@@ -134,51 +114,44 @@
 
         <div class="row g-4">
             
-            <!-- العمود الأيمن: أدوات تحديد المدرستين وحساب المسافة الحقيقية -->
             <div class="col-lg-5 col-12">
                 <div class="card main-card p-4 bg-white h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <h5 class="card-title fw-bold text-dark mb-4 d-flex align-items-center gap-2">
+                        <h5 class="card-title fw-bold text-dark mb-4 d-flex align-items-center gap-2" style="font-size: 1.1rem;">
                             <i class="bi bi-sliders2-vertical text-primary"></i>
-                            محرك التوجيه وحساب المسار
+                            حساب المسافة بين مدرستين اخترهما من القائمة ادناه
                         </h5>
                         
-                        <!-- اختيار مدرسة الانطلاق -->
                         <div class="mb-3 searchable-select-wrapper">
-                            <label class="form-label fw-bold text-secondary small">المدرسة الأولى (نقطة الانطلاق):</label>
+                            <label class="form-label fw-bold text-secondary small">المدرسة الأولى:</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-primary"><i class="bi bi-geo-alt"></i></span>
                                 <input type="text" id="school1Search" class="form-control" placeholder="ابحث واختر المدرسة الأولى..." onclick="showDropdown('school1')" oninput="filterDropdown('school1')" autocomplete="off">
                                 <button class="btn btn-outline-secondary" type="button" onclick="clearSelection('school1')"><i class="bi bi-x-lg"></i></button>
                             </div>
                             <div id="school1Dropdown" class="dropdown-menu dropdown-menu-custom w-100 shadow-sm p-0">
-                                <!-- يتم ملؤها ديناميكياً -->
-                            </div>
+                                </div>
                             <input type="hidden" id="school1Id">
                         </div>
 
-                        <!-- زر التبادل السريع والاتجاهات -->
                         <div class="text-center my-3">
                             <button class="btn btn-sm btn-outline-secondary rounded-circle px-3 py-2 shadow-sm" onclick="swapSchools()" title="تبديل اتجاه المسار">
                                 <i class="bi bi-arrow-down-up me-1"></i> تبديل الاتجاه
                             </button>
                         </div>
 
-                        <!-- اختيار مدرسة الوصول -->
                         <div class="mb-4 searchable-select-wrapper">
-                            <label class="form-label fw-bold text-secondary small">المدرسة الثانية (نقطة الوصول):</label>
+                            <label class="form-label fw-bold text-secondary small">المدرسة الثانية:</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-success"><i class="bi bi-geo-alt-fill"></i></span>
                                 <input type="text" id="school2Search" class="form-control" placeholder="ابحث واختر المدرسة الثانية..." onclick="showDropdown('school2')" oninput="filterDropdown('school2')" autocomplete="off">
                                 <button class="btn btn-outline-secondary" type="button" onclick="clearSelection('school2')"><i class="bi bi-x-lg"></i></button>
                             </div>
                             <div id="school2Dropdown" class="dropdown-menu dropdown-menu-custom w-100 shadow-sm p-0">
-                                <!-- يتم ملؤها ديناميكياً -->
-                            </div>
+                                </div>
                             <input type="hidden" id="school2Id">
                         </div>
 
-                        <!-- زر معالجة الحساب وحقن خرائط التوجيه -->
                         <button id="calcBtn" onclick="processAndCalculate()" class="btn btn-primary btn-lg w-100 py-3 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
                             <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
                             <i id="btnIcon" class="bi bi-bezier"></i>
@@ -186,7 +159,6 @@
                         </button>
                     </div>
 
-                    <!-- لوحة عرض النتائج التحليلية والمقارنة الجغرافية المتقدمة -->
                     <div id="resultsPanel" class="mt-4 p-3 bg-light border border-light-subtle rounded-3 d-none">
                         <h6 class="fw-bold text-dark mb-3 text-center border-bottom pb-2">نتائج القياس التحليلية</h6>
                         <div class="row text-center g-2 mb-2">
@@ -207,7 +179,7 @@
                             <div class="col-12">
                                 <div class="bg-white p-2 rounded border text-center shadow-xs">
                                     <span class="text-muted d-block small mb-1">
-                                        <i class="bi bi-clock-fill me-1 text-info"></i> زمن القيادة الفعلي بالمركبة (متوسط السرعة الحقيقية)
+                                        <i class="bi bi-clock-fill me-1 text-info"></i> زمن القيادة الفعلي بالمركبة
                                     </span>
                                     <span id="resTime" class="fw-bold text-dark fs-5">0 دقيقة</span>
                                 </div>
@@ -222,7 +194,6 @@
                 </div>
             </div>
 
-            <!-- العمود الأيسر: خريطة الشوارع التفاعلية والمسار الجغرافي النشط -->
             <div class="col-lg-7 col-12">
                 <div class="card main-card p-2 bg-white h-100 d-flex flex-column">
                     <div class="p-3 d-flex justify-content-between align-items-center">
@@ -237,23 +208,21 @@
                     <div class="flex-grow-1 position-relative">
                         <div id="map"></div>
                     </div>
-                    <div class="p-3 text-muted small d-flex align-items-center gap-2">
-                        <i class="bi bi-info-circle-fill text-primary"></i>
-                        <span>يعتمد النظام على بيانات الطرق المحلية المحدثة من خوادم OSRM لتتبع مسارات السيارات والشوارع الرئيسية بمحافظة طولكرم.</span>
+                    <div class="p-2 text-muted small text-center">
+                        <i class="bi bi-info-circle-fill text-primary"></i> بيانات مستخرجة ومحدثة بناءً على خرائط التخطيط التربوي المفتوحة بمحافظة طولكرم.
                     </div>
                 </div>
             </div>
 
         </div>
 
-        <!-- دليل وجدول المدارس بالكامل من قائمة الملف الملحق -->
         <div class="row mt-4">
             <div class="col-12">
                 <div class="card main-card p-4 bg-white">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
                         <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                             <i class="bi bi-journal-bookmark-fill text-warning"></i>
-                            دليل المدارس المحملة بمحافظة طولكرم (الملف الأصلي)
+                            دليل المدارس المحملة بمحافظة طولكرم (تحديث 2025-2026)
                         </h5>
                         <div class="col-md-4 col-12">
                             <div class="input-group">
@@ -276,8 +245,7 @@
                                 </tr>
                             </thead>
                             <tbody id="schoolsTableBody">
-                                <!-- يتم تعبئتها بواسطة جافا سكربت -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -286,12 +254,43 @@
 
     </div>
 
-    <!-- مكتبات الدعم والخرائط والـ Bootstrap -->
+    <div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold" id="noteModalLabel">
+                        <i class="bi bi-stars"></i> مميزات التحديث الجديد الخاص بمسارات الطرق
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" style="line-height: 1.8;">
+                    <ol class="list-group list-group-numbered border-0">
+                        <li class="list-group-item border-0 p-3 bg-light rounded mb-2">
+                            <strong>جلب شبكة الشوارع الفعلية:</strong> يقوم النظام حالياً برسم خط المسار الفعلي متطابقاً مع شبكة الطرق الرئيسية المعبدة بمحافظة طولكرم عبر خادم <strong>OSRM</strong>.
+                        </li>
+                        <li class="list-group-item border-0 p-3 bg-light rounded mb-2">
+                            <strong>رسم متعرج ذكي:</strong> يمر المسار بالمنعطفات والتقاطعات بدلاً من كونه خطاً مستقيماً، مما يجعل تتبع المسار دقيقاً ومطابقاً للواقع.
+                        </li>
+                        <li class="list-group-item border-0 p-3 bg-light rounded mb-2">
+                            <strong>أداة المقارنة:</strong> يمكنكِ الآن مقارنة الفارق بين "المسافة الهوائية المباشرة" وبين "المسافة الفعلية عبر الشوارع"، مع توفير نسبة مئوية دقيقة لتوضيح مدى طول مسار القيادة مقارنة بالخط المستقيم.
+                        </li>
+                        <li class="list-group-item border-0 p-3 bg-light rounded">
+                            <strong>تقدير زمن الرحلة:</strong> يعطي زمناً حقيقياً مستخرجاً ومحدثاً من حسابات الطرق الفعلية.
+                        </li>
+                    </ol>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">إغلاق النافذة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // إعداد كامل قائمة بيانات المدارس المأخوذة مباشرة من الملف المرفق "الاحداثيات.csv" لمديرية طولكرم
+        // مصفوفة المدارس المحدثة بالكامل طبقاً لملف الـ CSV الجديد لعام 2025-2026
         const schools = [
             { nationalId: "14111001", name: "بنات زهير محسن الاساسية", community: "طولكرم", lng: 35.0285325, lat: 32.31377809 },
             { nationalId: "14111002", name: "بنات حليمة خريشة الثانوية", community: "طولكرم", lng: 35.027822, lat: 32.312903 },
@@ -385,13 +384,16 @@
             { nationalId: "14112133", name: "بنات الشهيد نشأت ابو جبارة الأساسية", community: "كفر اللبد", lng: 35.10475841, lat: 32.29716984 },
             { nationalId: "14112134", name: "النزلة الوسطى الاساسية المختلطة", community: "النزلة الوسطى", lng: 35.09649112, lat: 32.40820687 },
             { nationalId: "14112136", name: " بيت ليد الاساسية المختلطة", community: "بيت ليد", lng: 35.1263692, lat: 32.25960928 },
-            { nationalId: "14112140", name: "بنات دير الغصون الاساسية", community: "دير الغصون", lng: 35.079786, lat: 32.353303 },
+            { nationalId: "14112140", name: "بنات دير الغصون الاساسية ", community: "دير الغصون", lng: 35.079786, lat: 32.353303 },
             { nationalId: "14112141", name: "بنات ارتاح الاساسية", community: "طولكرم", lng: 35.01763972, lat: 32.294288 },
             { nationalId: "14112150", name: "اجبارة الاساسية المختلطة", community: "خربة جبارة", lng: 35.04469466, lat: 32.26961943 },
             { nationalId: "14112170", name: "كفر زيباد الثانوية المختلطة", community: "كفر زيباد", lng: 35.0727084, lat: 32.22334119 },
             { nationalId: "14112180", name: "كفر عبوش الثانوية المختلطة", community: "كفر عبوش", lng: 35.0887812, lat: 32.22504356 },
             { nationalId: "14112185", name: "كفر عبوش الاساسية المختلطة", community: "كفر عبوش", lng: 35.08586586, lat: 32.22286076 },
+            { nationalId: "14121124", name: "بنات الأوقاف الشرعية", community: "طولكرم", lng: 35.044823, lat: 32.312453 },
             { nationalId: "14121125", name: "ذكور الأوقاف الشرعية", community: "طولكرم", lng: 35.04513956, lat: 32.31266897 },
+            { nationalId: "14331703", name: "مدرسة الاقصى الاساسية الخاصة", community: "طولكرم", lng: 35.02510132, lat: 32.32628705 },
+            { nationalId: "14331706", name: "المناهل الاساسية المختلطة", community: "طولكرم", lng: 35.031302, lat: 32.295833 },
             { nationalId: "14331707", name: "ذكور الاسراء النموذجية الأساسية", community: "طولكرم", lng: 35.02562879, lat: 32.30018582 },
             { nationalId: "14331714", name: "بنات الاسراء النموذجية الثانوية", community: "طولكرم", lng: 35.02593037, lat: 32.30047942 },
             { nationalId: "14332718", name: "اكاديمة الفرسان", community: "طولكرم", lng: 35.039774, lat: 32.324257 }
@@ -425,7 +427,7 @@
             resetMapView();
         }
 
-        // بناء القوائم المنسدلة للبحث الفوري والذكي
+        // بناء القوائم المنسدلة للبحث الفوري
         function buildDropdowns() {
             const drop1 = document.getElementById('school1Dropdown');
             const drop2 = document.getElementById('school2Dropdown');
@@ -471,7 +473,7 @@
             }
         }
 
-        // تحديد اختيار المدرسة وتحريك الكاميرا الأولية للخريطة
+        // تحديد اختيار المدرسة
         function selectSchool(id, name, lat, lng, type) {
             document.getElementById(type + 'Search').value = name;
             document.getElementById(type + 'Id').value = id;
@@ -530,7 +532,7 @@
                         popupAnchor: [1, -34],
                         shadowSize: [41, 41]
                     })
-                }).addTo(map).bindPopup(`<b>نقطة الانطلاق (1):</b><br>${name}`).openPopup();
+                }).addTo(map).bindPopup(`<b>المدرسة الأولى:</b><br>${name}`).openPopup();
             } else {
                 if (marker2) map.removeLayer(marker2);
                 marker2 = L.marker([lat, lng], {
@@ -542,7 +544,7 @@
                         popupAnchor: [1, -34],
                         shadowSize: [41, 41]
                     })
-                }).addTo(map).bindPopup(`<b>نقطة الوصول (2):</b><br>${name}`).openPopup();
+                }).addTo(map).bindPopup(`<b>المدرسة الثانية:</b><br>${name}`).openPopup();
             }
 
             if (marker1 && marker2) {
@@ -566,7 +568,7 @@
             return Value * Math.PI / 180;
         }
 
-        // معادلة هافرسين لحساب أقصر مسافة هوائية مباشرة (الخط المستقيم) بالكم
+        // معادلة هافرسين لحساب أقصر مسافة هوائية مباشرة
         function calculateHaversine(lat1, lon1, lat2, lon2) {
             const R = 6371; // نصف قطر الأرض
             const dLat = toRad(lat2 - lat1);
@@ -621,60 +623,50 @@
                 return;
             }
 
-            // 1. حساب المسافة الهوائية المباشرة (الخط المستقيم) كمرجع للمقارنة
             const aerialDistance = calculateHaversine(school1.lat, school1.lng, school2.lat, school2.lng);
-
             setButtonLoading(true);
 
-            // 2. محاولة الاتصال بخادم التوجيه العالمي المفتوح OSRM لجلب مسافة القيادة الفعلية والشوارع
             const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${school1.lng},${school1.lat};${school2.lng},${school2.lat}?overview=full&geometries=geojson`;
 
             try {
-                // تفعيل استدعاء الشبكة مع مؤقت زمني لعدم تعليق التطبيق
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 ثوانٍ حد أقصى للرد
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
 
                 const response = await fetch(osrmUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
 
-                if (!response.ok) throw new Error("تعذر الرد من خادم الطرق الرئيسي.");
+                if (!response.ok) throw new Error("تعذر الرد من خادم الطرق.");
 
                 const data = await response.json();
 
                 if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                    throw new Error("لا توجد مسارات قيادة متوفرة بين هاتين النقطتين.");
+                    throw new Error("لا توجد مسارات قيادة متوفرة.");
                 }
 
                 const route = data.routes[0];
-                const drivingDistanceKm = route.distance / 1000; // تحويل من متر لكيلومتر
-                const durationMinutes = Math.round(route.duration / 60); // تحويل من ثوانٍ لدقائق
-                const coordinates = route.geometry.coordinates; // مصفوفة الإحداثيات [lng, lat]
+                const drivingDistanceKm = route.distance / 1000;
+                const durationMinutes = Math.round(route.duration / 60);
+                const coordinates = route.geometry.coordinates;
 
-                // عرض وتحديث البيانات المقاسة في الواجهة
                 displayResults(drivingDistanceKm, aerialDistance, durationMinutes);
-
-                // رسم خط المسار الفعلي المتطابق مع الشوارع والمنعطفات
                 drawActualRoute(coordinates, school1, school2);
                 showAlert(`تم حساب مسار الشوارع الفعلي بنجاح!`, "success");
 
             } catch (error) {
-                console.warn("عطل في جلب مسار الشوارع، الانتقال للوضع الاحتياطي الفوري (المسافة الهوائية):", error);
+                console.warn("عطل في جلب المسار، الانتقال للوضع الاحتياطي الفوري:", error);
                 
-                // في حال انقطاع الشبكة أو تعطل الخادم يتم تشغيل محاكي المسافة الهوائية تلقائياً كإنقاذ للموقف
-                const simulatedDrivingDistance = aerialDistance * 1.25; // بافتراض أن المسار بالطرق أطول بـ 25% من الخط المستقيم
-                const estimatedMinutes = Math.round((simulatedDrivingDistance / 50) * 60); // بافتراض سرعة سيارة 50 كم/ساعة
+                const simulatedDrivingDistance = aerialDistance * 1.25; 
+                const estimatedMinutes = Math.round((simulatedDrivingDistance / 50) * 60);
 
                 displayResults(simulatedDrivingDistance, aerialDistance, estimatedMinutes, true);
-                
-                // رسم مسار مستقيم كخيار احتياطي
                 drawBackupStraightRoute(school1, school2);
-                showAlert(`تم حساب مسافة افتراضية بناءً على الإسقاط الهوائي بسبب عدم استجابة خادم الطرق حالياً.`, "warning");
-            } finally {
+                showAlert(`تم حساب مسافة افتراضية بناءً على الإسقاط الهوائي لعدم استجابة خادم الطرق حالياً.`, "warning");
+            } finaly {
                 setButtonLoading(false);
             }
         }
 
-        // عرض نتائج الحساب والمقارنة بنسب فروقات الطرق الهوائية والفعلية
+        // عرض نتائج الحساب
         function displayResults(roadDistance, aerialDistance, duration, isSimulated = false) {
             document.getElementById('resKm').innerText = roadDistance.toFixed(3) + " كم";
             document.getElementById('resAerial').innerText = aerialDistance.toFixed(3) + " كم";
@@ -687,60 +679,49 @@
 
             document.getElementById('resTime').innerHTML = `<i class="bi bi-car-front-fill me-1 text-info"></i> ${durationText}`;
 
-            // تحديث البطاقات العلوية الرئيسية
             document.getElementById('currentDistanceStat').innerText = roadDistance.toFixed(2) + " كم";
             document.getElementById('currentDurationStat').innerText = duration + " دقيقة";
 
-            // حساب كفاءة المسار والالتواء الجغرافي للشوارع
             const increasePercent = Math.round(((roadDistance - aerialDistance) / aerialDistance) * 100);
             const efficiencyMsg = document.getElementById('routingEfficiencyMsg');
             
             if (isSimulated) {
-                efficiencyMsg.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> قياس تقريبي: مسار الشوارع المقدر أطول بحوالي <b>25%</b> من الإسقاط المباشر.`;
+                efficiencyMsg.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> قياس تقريبي: مسار الشوارع أطول بحوالي <b>25%</b> من الإسقاط المباشر.`;
                 efficiencyMsg.className = "badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle py-2 w-100 text-center";
             } else {
-                efficiencyMsg.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> مسار القيادة الفعلي عبر الطرق أطول بنسبة <b>${increasePercent}%</b> من الخط الهوائي المستقيم.`;
+                efficiencyMsg.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> مسار القيادة الفعلي أطول بنسبة <b>${increasePercent}%</b> من الخط الهوائي المستقيم.`;
                 efficiencyMsg.className = "badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-2 w-100 text-center";
             }
 
             document.getElementById('resultsPanel').classList.remove('d-none');
         }
 
-        // رسم الخط المتعرج الفعلي على الخريطة والمتطابق تماماً مع الشوارع والمنعطفات
+        // رسم خط المسار الفعلي المتطابق مع الشوارع
         function drawActualRoute(coordinates, s1, s2) {
-            if (routePolyline) {
-                map.removeLayer(routePolyline);
-            }
+            if (routePolyline) map.removeLayer(routePolyline);
 
-            // تحويل مصفوفة OSRM [lng, lat] إلى تنسيق Leaflet [lat, lng]
             const latlngs = coordinates.map(coord => [coord[1], coord[0]]);
 
             routePolyline = L.polyline(latlngs, {
-                color: '#2563eb', // لون أزرق ملكي جذاب
+                color: '#2563eb',
                 weight: 6,
                 opacity: 0.9,
                 lineCap: 'round',
                 lineJoin: 'round'
             }).addTo(map);
 
-            // تعديل مجال الخريطة تلقائياً ليغطي كامل المسار بشكل كامل ومنسق
             const bounds = L.latLngBounds(latlngs);
             map.fitBounds(bounds.pad(0.15));
         }
 
-        // رسم خط مستقيم احتياطي في حال انقطاع خدمة الـ API
+        // رسم خط مستقيم احتياطي
         function drawBackupStraightRoute(s1, s2) {
-            if (routePolyline) {
-                map.removeLayer(routePolyline);
-            }
+            if (routePolyline) map.removeLayer(routePolyline);
 
-            const latlngs = [
-                [s1.lat, s1.lng],
-                [s2.lat, s2.lng]
-            ];
+            const latlngs = [[s1.lat, s1.lng], [s2.lat, s2.lng]];
 
             routePolyline = L.polyline(latlngs, {
-                color: '#dc2626', // أحمر تنبيهي كبديل احتياطي
+                color: '#dc2626',
                 weight: 5,
                 opacity: 0.8,
                 dashArray: '10, 10',
@@ -751,7 +732,6 @@
             map.fitBounds(group.getBounds().pad(0.15));
         }
 
-        // تصفير وتركيز الكاميرا الجغرافية
         function resetMapView() {
             if (schools.length > 0) {
                 const bounds = schools.map(s => [s.lat, s.lng]);
@@ -761,7 +741,7 @@
             }
         }
 
-        // بناء وتعبئة جدول المدارس بالكامل بالأسفل لتسهيل المعاينة والبحث والفرز الفوري
+        // بناء جدول المدارس
         function buildTable() {
             const body = document.getElementById('schoolsTableBody');
             let html = '';
@@ -785,7 +765,6 @@
             body.innerHTML = html;
         }
 
-        // فلترة دليل المدارس بالجدول فورياً عند الكتابة في خانة البحث
         function filterTable() {
             const filter = document.getElementById('tableSearch').value.toLowerCase();
             const rows = document.getElementById('schoolsTableBody').getElementsByTagName('tr');
@@ -800,7 +779,6 @@
             }
         }
 
-        // استعراض موقع مدرسة معينة مباشرة من الجدول على الخريطة
         function showOnMap(lat, lng, name) {
             if (marker2) map.removeLayer(marker2);
             if (routePolyline) map.removeLayer(routePolyline);
@@ -812,7 +790,6 @@
             window.scrollTo({ top: 220, behavior: 'smooth' });
         }
 
-        // دالة لعرض الإشعارات المرنة المتجاوبة بدلاً من التنبيهات المزعجة
         function showAlert(message, type) {
             const placeholder = document.getElementById('alertPlaceholder');
             const wrapper = document.createElement('div');
@@ -825,7 +802,6 @@
             `;
             placeholder.appendChild(wrapper);
 
-            // تدمير التنبيه تلقائياً بعد 6 ثوانٍ
             setTimeout(() => {
                 const alert = bootstrap.Alert.getOrCreateInstance(wrapper.firstElementChild);
                 if (alert) alert.close();
@@ -834,10 +810,3 @@
     </script>
 </body>
 </html>
-
-
-### مميزات التحديث الجديد الخاص بمسارات الطرق:
-1. **جلب شبكة الشوارع الفعلية:** يقوم النظام حالياً برسم خط المسار الفعلي متطابقاً مع شبكة الطرق الرئيسية المعبدة بمحافظة طولكرم عبر خادم **OSRM**.
-2. **رسم متعرج ذكي:** يمر المسار بالمنعطفات والتقاطعات بدلاً من كونه خطاً مستقيماً، مما يجعل تتبع المسار دقيقاً ومطابقاً للواقع.
-3. **أداة المقارنة:** يمكنكِ الآن مقارنة الفارق بين "المسافة الهوائية المباشرة" وبين "المسافة الفعلية عبر الشوارع"، مع توفير نسبة مئوية دقيقة لتوضيح مدى طول مسار القيادة مقارنة بالخط المستقيم.
-4. **تقدير زمن الرحلة:** يعطي زمناً حقيقياً مستخرجاً ومحدثاً من حسابات الطرق الفعلية.
